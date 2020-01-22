@@ -1,0 +1,8 @@
+config.py
+__pycache__
+.ipynb_checkpoints
+followers_dict_trimmed.data
+followers_dict.data
+all_tweets_dict.data
+backup_data-files/
+data/
