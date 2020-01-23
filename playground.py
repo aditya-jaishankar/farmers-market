@@ -149,7 +149,7 @@ def get_docs(d, market):
     lematized set of words for that follower.
     """
     docs = []
-    for user in tqdm(d[market]):
+    for user in d[market]:
         text_list = d[market][user]['fulltext']
         docs.append(text_list)
     return docs
@@ -157,27 +157,52 @@ def get_docs(d, market):
 # for market in master_dict:
 markets = list(master_dict.keys())
 docs = get_docs(master_dict, markets[0])
-t1 = time.time()
 id2word = corpora.Dictionary(docs)
 corpus = [id2word.doc2bow(doc) for doc in docs]
-t2 = time.time()
-
-print('time:', t2-t1)
 
 # with open('./data/corpus_market0.data', 'wb') as filehandle:
 #     pickle.dump(corpus, filehandle, protocol=pickle.HIGHEST_PROTOCOL)
 
 # with open('./data/id2word_market0.data', 'wb') as filehandle:
 #     pickle.dump(id2word, filehandle, protocol=pickle.HIGHEST_PROTOCOL)
+def compute_lda(corpus, id2word, alpha=.01):
+    """
+    Performs the LDA and returns the computer model.
+    Input: Corpus, dictionary and hyperparameters to optimize
+    Output: the fitted/computed LDA model
+    """
+    lda_model = gensim.models.ldamulticore.LdaMulticore(corpus=corpus, 
+                                                        id2word=id2word,
+                                                        num_topics=22,
+                                                        random_state=100,
+                                                        # update_every=1,
+                                                        chunksize=10,
+                                                        passes=50,
+                                                        alpha=alpha,
+                                                        per_word_topics=True)
+    return lda_model
 
-lda_model = gensim.models.ldamodel.LdaModel(corpus=corpus, 
-                                            id2word=id2word,
-                                            num_topics=10,
-                                            random_state=100,
-                                            update_every=1,
-                                            chunksize=10,
-                                            passes=50,
-                                            alpha=.001,
-                                            per_word_topics=True)
+def main():
+    coherence_scores = []
+    alpha_range = [.001, .005, .01, .05, .1]
+    for alpha in tqdm(alpha_range):
+        lda_model = compute_lda(corpus, id2word, alpha=alpha)
 
-print(lda_model.print_topics())
+        coherence_model_lda = CoherenceModel(model=lda_model,
+                                            texts=docs,
+                                            dictionary=id2word,
+                                            coherence='c_v')
+        coherence_lda = coherence_model_lda.get_coherence()
+        coherence_scores.append(coherence_lda)
+        print('alpha = ', alpha, ', coherence score:', coherence_lda)
+    return coherence_scores
+
+if __name__ == "__main__":
+    alpha_range = [.001, .005, .01, .05, .1]
+    coherence_scores = main()
+    plt.plot(alpha_range, coherence_scores)
+    plt.show()
+
+
+
+

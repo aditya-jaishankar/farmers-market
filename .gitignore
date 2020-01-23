@@ -6,3 +6,5 @@ followers_dict.data
 all_tweets_dict.data
 backup_data-files/
 data/
+todo.md
+ldamodels/
