@@ -15,7 +15,8 @@ import time
 import nltk
 from nltk.corpus import stopwords
 stop_words = stopwords.words('english')
-stop_words.extend(['from', 'subject', 're', 'edu', 'http', 'https'])
+stop_words.extend(['https', 'http', 'shit', 'shitting',
+                    'london', 'para'])
 import re
 import gensim
 import gensim.corpora as corpora
@@ -158,6 +159,8 @@ def get_docs(d, market):
 markets = list(master_dict.keys())
 docs = get_docs(master_dict, markets[0])
 id2word = corpora.Dictionary(docs)
+# Only retain words that appear in at least 10% of the documents
+id2word.filter_extremes(no_below=0.1*len(docs))
 corpus = [id2word.doc2bow(doc) for doc in docs]
 
 # with open('./data/corpus_market0.data', 'wb') as filehandle:
@@ -165,28 +168,29 @@ corpus = [id2word.doc2bow(doc) for doc in docs]
 
 # with open('./data/id2word_market0.data', 'wb') as filehandle:
 #     pickle.dump(id2word, filehandle, protocol=pickle.HIGHEST_PROTOCOL)
-def compute_lda(corpus, id2word, alpha=.01):
+def compute_lda(corpus, id2word, k=22, alpha=.01):
     """
     Performs the LDA and returns the computer model.
     Input: Corpus, dictionary and hyperparameters to optimize
     Output: the fitted/computed LDA model
     """
     lda_model = gensim.models.ldamulticore.LdaMulticore(corpus=corpus, 
-                                                        id2word=id2word,
-                                                        num_topics=22,
-                                                        random_state=100,
-                                                        # update_every=1,
-                                                        chunksize=10,
-                                                        passes=50,
-                                                        alpha=alpha,
-                                                        per_word_topics=True)
+                                                id2word=id2word,
+                                                num_topics=k,
+                                                random_state=100,
+                                                # update_every=1,
+                                                chunksize=5,
+                                                passes=100,
+                                                alpha=.01,
+                                                iterations=100,
+                                                per_word_topics=True)
     return lda_model
 
 def main():
     coherence_scores = []
-    alpha_range = [.001, .005, .01, .05, .1]
-    for alpha in tqdm(alpha_range):
-        lda_model = compute_lda(corpus, id2word, alpha=alpha)
+    k_range = range(5, 40)
+    for k in tqdm(k_range):
+        lda_model = compute_lda(corpus, id2word, k=k)
 
         coherence_model_lda = CoherenceModel(model=lda_model,
                                             texts=docs,
@@ -194,14 +198,14 @@ def main():
                                             coherence='c_v')
         coherence_lda = coherence_model_lda.get_coherence()
         coherence_scores.append(coherence_lda)
-        print('alpha = ', alpha, ', coherence score:', coherence_lda)
-    return coherence_scores
+        print('k = ', k, ', coherence score:', coherence_lda)
+    plt.plot(k_range, coherence_scores)
+    plt.show()
+    pass
 
 if __name__ == "__main__":
-    alpha_range = [.001, .005, .01, .05, .1]
-    coherence_scores = main()
-    plt.plot(alpha_range, coherence_scores)
-    plt.show()
+    main()
+    
 
 
 
