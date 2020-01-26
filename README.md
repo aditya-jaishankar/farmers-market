@@ -1,5 +1,9 @@
-# farmers-market
+# Magnetic Market
 Project work done as part of the Insight Data Science, January 2020 cohort
+
+
+
+
 
 Ideas:
 
