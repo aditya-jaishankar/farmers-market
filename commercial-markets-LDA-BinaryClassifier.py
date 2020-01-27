@@ -182,8 +182,6 @@ feature_vectors = [doc_topics for doc_topics, word_topics, word_phis in topics]
 # non zero, so I will have to manually go in and add zeros.
 augmented_feature_vectors = get_augmented_feature_vectors(feature_vectors)
 
-# visualize_LDA(lda_model_random_users, corpus)
-
 # %% [markdown]
 
 # At this point, I have a list of feature vectors and a list of labels that
@@ -212,5 +210,11 @@ y_pred = clf.predict(X_test)
 print('Accuracy score in distinguishing between human and commercial:', 
         accuracy_score(y_test, y_pred))
 
-# %% [markdown]
-# Maybe I should try an SVM with a radial basis function kernel
+# %% 
+
+# save the binary classifier
+
+with open('./models/commercial-filter-classifier.model', 'wb') as filehandle:
+    pickle.dump(clf, filehandle, protocol=pickle.HIGHEST_PROTOCOL)
+
+# %%
