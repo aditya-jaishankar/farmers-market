@@ -61,6 +61,14 @@ Now comes the major chunk of the downloading. For each market, and each selected
 
 **TODO:** Perhaps I can hand select a set of commercial followers? Check out the `farmers_market_twitter_all.csv` file. I have a list of farmers markets with their handles. I could use this is select all them, download all their tweets, so a topic model, train a binary classifier (simple), test_train_split (will need to include some non-market account, say random accounts from the corresponding city). Then expand the selected_follower function to include this case. 
 
+### `commercial-markets-downloader.py`
+
+To implement the above idea of being able to filer out commercial farmers market followers, I am first found a list of all farmers markets in the US from census data, available in `farmers_market_twitter_all.csv`. I am reducing the scope of my project to urban farmers markets for now (because they have more resources to organize events), so I first use more US census data and the `shapely` package to only select those farmers markets that lie in urban areas. Moreover, I had to do some cleaning of the twitter handles. Once this is done, I download 500 tweets from each of the eligible farmers markets. Because I know for sure that these are all farmers markets, I label all of these 1. 
+
+Next, I want to augment this dataset with documents that are labeled 0. For this I create a random number generator that outputs a 64 bit unsigned integer and use this as a user_id (this is the format twitter requires) and then try and see if this id corresponds to an account with over 500 tweets and 500 followers. I then download all tweets of these eligible accounts and then label them as 0. 
+
+Finally I convert these tweet dictionaries into a more useful format so that I can create docs out of them and then feed them into code that performs LDA, determines the distribution of topics per document and then performs binary classification given the labels. The feature vectors are the topic probability distributions for each document. 
+
 ### `LDA.ipynb`
 
 This code does all the major work of implementing the LDA analysis. Before actually doing the LDA, I first create `master_dict` which takes `all_tweets_dict` in all it's gory detail and simplifies it into a structure of the form: 

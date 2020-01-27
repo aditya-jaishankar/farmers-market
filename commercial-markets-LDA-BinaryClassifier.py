@@ -17,7 +17,6 @@ import pickle
 import collections
 import random
 from tqdm import tqdm as tqdm
-import config
 import time
 import os
 dirpath = os.path.dirname(os.path.realpath('__file__'))
@@ -48,142 +47,170 @@ english_words = words_dictionary.keys()
 # Visualization imports
 import pyLDAvis
 import pyLDAvis.gensim
-pyLDAvis.enable_notebook()
+# pyLDAvis.enable_notebook()
 import matplotlib.pyplot as plt
 
 # Other imports
 import pandas as pd
 import numpy as np
-import tweepy
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score
+from sklearn import svm
 
 # %% [markdown]
 
-## Loading the data generated in `commercial-markets-downloader.py`
+## All functions
 
 # %%
-with open('./data/dataset_tweets_random_users.data', 'rb') as filehandle:
-    dataset_tweets_random_users = pickle.load(filehandle)
+def compute_lda(corpus, id2word, k=10, alpha='auto'):
+    """
+    Performs the LDA and returns the computer model.
+    Input: Corpus, dictionary and hyperparameters to optimize
+    Output: the fitted/computed LDA model
+    """
+    lda_model = gensim.models.ldamodel.LdaModel(corpus=corpus, 
+                                                id2word=id2word,
+                                                num_topics=k,
+                                                random_state=100,
+                                                # update_every=1,
+                                                chunksize=5,
+                                                passes=100,
+                                                alpha=.01,
+                                                iterations=100,
+                                                per_word_topics=True)
+    return lda_model
+
+def visualize_LDA(model, corpus):
+    """
+    This function accepts an lda model and a corpus of words and uses pyLDAvis
+    to prepare a visualization and then save to html. 
+    input: an lda model and a corpus of words
+    returns: None
+    """
+    LDAvis_prepared = pyLDAvis.gensim.prepare(model, corpus,
+                                              dictionary=model.id2word,
+                                              mds='tsne')
+    vis_filename = './LDAvis_prepared/random_users/LDAvis.html'
+    pyLDAvis.save_html(LDAvis_prepared, vis_filename)
+    pyLDAvis.show(LDAvis_prepared)
+    return None
+
+def get_augmented_feature_vectors(feature_vectors):
+    """
+    Takes in the feature vector list of list and augments it. gensim does not
+    actually put a 0 for topics that have 0 probability so I need to manually
+    add it in to build my feature vector. 
+    input: accepts the feature vectors output by gensim. It is a list of 
+    tuples - one list entry per document and tuple are (topic, probability)
+    pairs.
+    returns: Augmented feature vectors as list of list. Each list entry 
+    corresponds to one document, with the i-th element in the inner list
+    corresponding to the probability that the document was generated with 
+    topic i.
+    """
+    augmented = []
+    for i, vector in enumerate(feature_vectors): # each vector is a list of tuples
+        topics = [tup[0] for tup in vector]
+        for t in range(10):
+            if t not in topics:
+                feature_vectors[i].append((t, 0))
+        new_feature_vector = sorted(feature_vectors[i], key=lambda tup: tup[0])
+        augmented.append([tup[1] for tup in new_feature_vector])
+    return augmented
 
 # %% [markdown]
 
-# Note that the structure of the `dataset_tweets_random_users` dictionary is 
-# ```
-# {
-#     screen_name: {
-#                     'tweets': [{tweet1_json}, ..., {tweet}],
-#                     'label': 1
-#                  }
-# }
-# ```
-
-# We now want to build all the usual data cleaning tokenziation, lemmatization
-# pipeline and then build the corpus of words. For this, I am just copying and
-# functions from `LDA.ipynb`. Ideally, I would want to have a `utils` file and
-# then just import functions as needed from `utils.py`. With more time, I can
-# probably clean up my code base significantly. Dividing the code into those 
-# that download data and then export things a dictionaries, and those that 
-# utilize functions from `utils.py` to keep everything clean and modular.
-
-# I finally want a dictionary of the form
-
-# ```
-# {
-#     user: {
-#               'hashtags': [..., ..., ...],
-#               'full_text': [cleaned, tokenized, lemmatized, words of tweets],
-#               'label': 0 or 1 
-#           }
-# }
-# ```
-
-# First define some utility functions
+## Loading the data
 
 # %%
-def get_user(tweet):
-    """
-    input: tweet dictionary
-    returns: return the username
-    """
-    return tweet['user']['screen_name']
 
+with open('./data/lda_dict_random_users.data', 'rb') as filehandle:
+    lda_dict_random_users = pickle.load(filehandle)
 
-def get_hashtag_list(tweet):
-    """
-    input: tweet dictionary
-    returns: list of all hashtags in both the direct tweet and the
-    retweet 
-    """
+# %% [markdown]
 
-    l = []
-    for d in tweet['entities']['hashtags']:
-        l += [d['text']]
+## Generating the docs, corpuses and labels
 
-    if 'retweeted_status' in tweet.keys():
-        for d in tweet['retweeted_status']['entities']['hashtags']:
-            l += [d['text']]
-    return l
-
-
-def tokenizer_cleaner_nostop_lemmatizer(text):
-    """
-    This function tokenizes the text of a tweet, cleans it off punctuation,
-    removes stop words, and lemmatizes the words (i.e. finds word roots to remove noise)
-    I am largely using the gensim and spacy packages 
-
-    Input: Some text
-    Output: List of tokenized, cleaned, lemmatized words
-    """
-
-    tokenized_depunkt = gensim.utils.simple_preprocess(text, min_len=4, deacc=True)
-    tokenized_depunkt_nostop = ([word for word in tokenized_depunkt 
-                                 if (word not in stop_words and word in english_words)])
-    
-    # Lemmatizer while also only allowing certain parts of speech.
-    # See here: https://spacy.io/api/annotation
-    allowed_pos = ['ADJ', 'ADV', 'NOUN', 'PROPN','VERB']
-    doc = nlp(' '.join(tokenized_depunkt_nostop))
-    words_final = [token.lemma_ for token in doc if token.pos_ in allowed_pos]
-    return words_final
-
-    
-def get_tweet_words_list(tweet):
-    """
-    This function takes in a tweet and checks if there is a retweet associated 
-    with it. It then returns a list of tokenized words without punctuation.
-    input: tweet
-    output: list of tokenized words without punctuation
-    """
-
-    text = tweet['full_text']
-    clean_words = tokenizer_cleaner_nostop_lemmatizer(text)
-    
-    if 'retweeted_status' in tweet.keys():
-        retweet_text = tweet['retweeted_status']['full_text']
-        retweet_clean_words = tokenizer_cleaner_nostop_lemmatizer(retweet_text)
-        clean_words += retweet_clean_words
-    return clean_words
+# Note that there are about 320 documents with label 1 and about 480
+# documents with label 0. 
 
 # %%
-lda_dict_random_users = {}
-for user in tqdm(dataset_tweets_random_users):
-    lda_dict_random_users[user] = {}
-    lda_dict_random_users[user]['hashtags'] = []
-    lda_dict_random_users[user]['fulltext'] = []
 
-    
-    tweets = dataset_tweets_random_users[user]['tweets']
-    label = dataset_tweets_random_users[user]['label']
+# it seems that some of my entries don't have label, probably because it was
+# skipped in a previous try, except clause. So I will try and catch this 
+# up front:
+labels = []
+docs = []
+for user in lda_dict_random_users:
+    try:
+        label = lda_dict_random_users[user]['label']
+        doc = lda_dict_random_users[user]['fulltext']
 
-    for tweet in tweets:
-        hashtags = get_hashtag_list(tweet)
-        words = get_tweet_words_list(tweet)
+        labels += [label]
+        docs += [doc]
+    except:
+        pass
 
-        lda_dict_random_users[user]['hashtags'].extend(hashtags)
-        lda_dict_random_users[user]['fulltext'].extend(words)
+id2word = corpora.Dictionary(docs)
+# Idea: Keep only those tokens that appear in at least 10% of the documents
+id2word.filter_extremes(no_below=int(0.1*len(docs)))
+corpus = [id2word.doc2bow(doc) for doc in docs]
 
-with open('./data/lda_dict_random_users.data', 'wb') as filehandle:
-    pickle.dump(lda_dict_random_users, filehandle, 
-                protocol=pickle.HIGHEST_PROTOCOL)
+# %%
+t1 = time.time()
+lda_model_random_users = compute_lda(corpus, id2word)
+t2 = time.time()
+print('Time elapsed:', t2-t1)
+lda_model_random_users.save('./ldamodels/random_users/model.model')
+pprint(lda_model_random_users.print_topics())
 
 
+# Also save the corpus because gensim does not save this automatically
+with open('./ldamodels/random_users/corpus.corpus', 'wb') as filehandle:
+    pickle.dump(corpus, filehandle, protocol=pickle.HIGHEST_PROTOCOL)
 
+# %% [markdown]
+
+## Generating feature vectors given a document and given the lda model
+
+# %%
+topics = lda_model_random_users.get_document_topics(corpus, 
+                                                    per_word_topics=True)
+feature_vectors = [doc_topics for doc_topics, word_topics, word_phis in topics]
+
+# Note that get_document_topics only returns cases where the probability is
+# non zero, so I will have to manually go in and add zeros.
+augmented_feature_vectors = get_augmented_feature_vectors(feature_vectors)
+
+# visualize_LDA(lda_model_random_users, corpus)
+
+# %% [markdown]
+
+# At this point, I have a list of feature vectors and a list of labels that
+# correspond to that feature vector, which can now be fed into a binary
+# classifier. I am going to start with a random forest and then see if I can or
+# should do better than that. 
+
+# %% [markdown]
+
+## Binary Classification Implementation
+
+# I have my feature vectors (list of list) in `augmented_feature_vectors` and 
+# the corresponding labels in `labels`. This is ready to fed into a binary
+# classifier. First, I will split my data into a test_train_split.
+
+# %%
+
+X_train, X_test, y_train, y_test = train_test_split(augmented_feature_vectors,
+                                                    labels,
+                                                    test_size=0.33,
+                                                    random_state=100)
+clf = svm.SVC(kernel='rbf', gamma='scale')
+clf.fit(X_train, y_train)
+
+y_pred = clf.predict(X_test)
+print('Accuracy score in distinguishing between human and commercial:', 
+        accuracy_score(y_test, y_pred))
+
+# %% [markdown]
+# Maybe I should try an SVM with a radial basis function kernel
