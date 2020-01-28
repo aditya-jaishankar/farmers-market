@@ -11,6 +11,10 @@ In this project I scrape twitter data find the tweets
 
 ## File structures
 
+In a later stage of this project, we will use this file structure to draw out a map of how best to refactor the code to align with established software design
+practices. It does seem like I am repeating a lot of functions which I can
+collapse into a `utils` file. How best should I handle this `utils` file? Essentially, I want to separate out the downloading of data and the processing of the data. Probably the best way to do this is through a `if name == __main__()` structure, and combining it with argparse. Do this after week 4. 
+
 ### `user_list_generator.ipynb`
 
 I have a list of the biggest farmers markets in the US. I use the Twitter accounts of these farmers markets. For each farmers market, I find a list of 2000 twitter followers using `api.followers`. The reasoning here is that people who follow the accounts of farmers marketsI generate `followers_dict`, which has the form:
@@ -117,6 +121,17 @@ Finally, I train the LDA with a choice of hyperparameters (used the coherence sc
 ### `LDAvis.ipynb`
 
 This file is solely for importing the trained LDA models, generating the `pyLDAvis` visuals and then exporting these visuals as HTML files. I then use `streamlit` later to display these visuals in the browser. This is just a few lines of code in `streamlit.py`. 
+
+# Some application ideas
+
+* Maybe I can use it to identify low income users. Or target it towards lower income users.
+
+* Free health screenings, yoga classes, outdoor cooking classes, lectures and
+talks on social issues such as climate change and sustainability. 
+
+* Shoppers are unable to do all their shopping - so maybe increase product space depending on what other products people want. 
+
+* Increased options for socialization
 
 
 

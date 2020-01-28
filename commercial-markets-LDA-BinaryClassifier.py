@@ -131,8 +131,8 @@ with open('./data/lda_dict_random_users.data', 'rb') as filehandle:
 
 ## Generating the docs, corpuses and labels
 
-# Note that there are about 320 documents with label 1 and about 480
-# documents with label 0. 
+# Note that there are about 320 documents with label 1 (yes to farmers market) 
+# and about 480 documents with label 0 (not farmers market).
 
 # %%
 
@@ -218,3 +218,7 @@ with open('./models/commercial-filter-classifier.model', 'wb') as filehandle:
     pickle.dump(clf, filehandle, protocol=pickle.HIGHEST_PROTOCOL)
 
 # %%
+# At this point I have a trained binary classifier that is presumably able to
+# detect other farmers markets, farms, and other commercial users. We next use
+# this trained model to further tune our input into the LDA when looking at 
+# predictions by city.
