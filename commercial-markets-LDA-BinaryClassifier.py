@@ -95,6 +95,7 @@ def visualize_LDA(model, corpus):
     pyLDAvis.show(LDAvis_prepared)
     return None
 
+
 def get_augmented_feature_vectors(feature_vectors):
     """
     Takes in the feature vector list of list and augments it. gensim does not
@@ -165,9 +166,7 @@ lda_model_random_users.save('./ldamodels/random_users/model.model')
 pprint(lda_model_random_users.print_topics())
 
 
-# Also save the corpus because gensim does not save this automatically
-with open('./ldamodels/random_users/corpus.corpus', 'wb') as filehandle:
-    pickle.dump(corpus, filehandle, protocol=pickle.HIGHEST_PROTOCOL)
+
 
 # %% [markdown]
 
