@@ -9,30 +9,35 @@ import warnings
 import gensim
 from pprint import pprint
 from tqdm import tqdm
+import pickle
 
 # %%
 # File loads
 nlp = spacy.load('en_core_web_lg')
 categories = pd.read_pickle('./data/categories_final_cleaned_filtered.df')
-categories.head()
 
 # %%
 # Defining functions
 
 def drop_check(category):
     """
-    
+    Eliminates certain extraenous categories from the categories list. This 
+    is done iteratively after some runs of automatic topic labeling.
     """
     drop_words = ['me my', 'cheese dishes', 'fruit juice', 'animal hair',
                   'food technology', 'fish sauce', 'wedding photography',
                   'economic law', 'student awards', 'know nothing',
-                  'cancer patients', 'food ingredients', 'do it yourself',
-                  'dead like me', 'bad girls characters', 'me my songs']
+                  'cancer patients', 'do it yourself',
+                  'dead like me', 'bad girls characters', 'me my songs',
+                  'guy songs', 'my weird school', 'him songs', 'hot chocolate',
+                  'hot dogs', 'kid sister songs', 'dead people',
+                  'naked eyes songs']
     return (category.lower() not in drop_words)
+
 
 def get_doc2vec_matrix(df):
     """
-    Accepts: a dataframe containing the doc2vec vectors for wikipedia categories
+    Accepts: a dataframe containing the doc2vec vectors for wiki categories
     Returns: The normalized (-1, 300) doc2vec matrix
     """
     
@@ -89,6 +94,10 @@ with warnings.catch_warnings():
             words_string = ' '.join(words)
             topic_label = get_minimum_distance_category(matrix, words_string)
             topic_labels[market_index][topic] = topic_label
-pprint(topic_labels)
             
 # %%
+# Prints topic labels and save to dictionary
+
+pprint(topic_labels)
+with open('./data/topic_labels_dict.data', 'wb') as filehandle:
+    pickle.dump(topic_labels, filehandle, protocol=pickle.HIGHEST_PROTOCOL)
