@@ -6,6 +6,7 @@ from gensim.parsing.preprocessing import strip_punctuation, strip_numeric
 from gensim.parsing.preprocessing import strip_multiple_whitespaces
 import pandas as pd
 from tqdm import tqdm as tqdm
+import numpy as np
 
 nlp = spacy.load('en_core_web_lg')
 # %%
@@ -81,7 +82,7 @@ categories['categories'] = categories.apply(
 
 
 # Remove categories longer than 4 words
-length_mask = categories.apply(lambda row: len(row['categories']) in [1,2], 
+length_mask = categories.apply(lambda row: len(row['categories']) in [2, 3],
                                axis=1)
 categories = categories[length_mask]
 
@@ -95,7 +96,7 @@ categories = categories[proper_noun_mask]
 
 #Make list of words into single string
 print('Converting string of list to list of strings')
-categories['categories'] = categories.progress_apply(cleanup, axis=1)
+categories['categories'] = categories.apply(cleanup, axis=1)
 
 # We do some further cleaning and filtering
 
@@ -111,14 +112,16 @@ print('Calculating doc2vec for wiki categories')
 categories['doc2vec'] = categories.progress_apply(lambda row: 
                                               get_docvec(row['categories']),
                                               axis=1)
-categories = categories.reset_index(drop=True)
-# Some words don't exist, and are given zero vectors, so I am going to remove it
+# Some words don't exist, and are given zero vectors, so I am going to remove
 
 
 # %%
 # Write the new dataframe to file
-empty_mask = np.sum(np.array([categories['doc2vec']]).reshape(-1, 300), axis=1) != 0
+empty_mask = np.sum(np.array([categories['doc2vec']])
+                    .reshape(-1, 300), axis=1) != 0
 categories = categories[empty_mask]
-# categories.to_pickle('./data/categories_final_cleaned_filtered.df')
+categories = categories.reset_index(drop=True)
+print('Length of categories list:', categories.shape[0])
+categories.to_pickle('./data/categories_final_cleaned_filtered.df')
 
 # %%

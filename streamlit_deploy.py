@@ -20,5 +20,4 @@ if st.button('Go!'):
         market_index = data[data['Location'] == str(location)].index.values[0]
         url =  ('file://' + dirpath + '/LDAvis_prepared/market' + 
                 str(market_index) + '/LDAvis.html')
-        webbrowser.open(url, new=0)  # open in new tab
-    
+        webbrowser.open(url, new=0)  # open in new tab   
