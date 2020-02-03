@@ -7,32 +7,28 @@ import numpy as np
 from sklearn.preprocessing import normalize
 import warnings
 import gensim
-from pprint import pprint
 from tqdm import tqdm
+from pprint import pprint
 import pickle
 
 # %%
 # File loads
 nlp = spacy.load('en_core_web_lg')
-categories = pd.read_pickle('./data/categories_final_cleaned_filtered.df')
+# categories = pd.read_pickle('./data/categories_final_cleaned_filtered.df')
 
 # %%
 # Defining functions
 
-def drop_check(category):
+
+def get_docvec(category):
     """
-    Eliminates certain extraenous categories from the categories list. This 
-    is done iteratively after some runs of automatic topic labeling.
+    input: a category string
+    output: doc2vec vector calculated using spacy
     """
-    drop_words = ['me my', 'cheese dishes', 'fruit juice', 'animal hair',
-                  'food technology', 'fish sauce', 'wedding photography',
-                  'economic law', 'student awards', 'know nothing',
-                  'cancer patients', 'do it yourself',
-                  'dead like me', 'bad girls characters', 'me my songs',
-                  'guy songs', 'my weird school', 'him songs', 'hot chocolate',
-                  'hot dogs', 'kid sister songs', 'dead people',
-                  'naked eyes songs']
-    return (category.lower() not in drop_words)
+    # Consider doing a weighted mean instead of blind word2vec. Currently, this
+    # implementation of doc2vec is just doing a mean of the individual word2vec
+    doc = nlp(category)
+    return doc.vector
 
 
 def get_doc2vec_matrix(df):
@@ -50,13 +46,16 @@ def get_minimum_distance_category(matrix, topic_words):
     """
     Input: The normalized doc2vec matrix for wikipedia categories, the words
            that constitute a topic.
-    Returns: the argmax of cosine similarity, which can be used to extract the
-             text
+    Returns: one of the top five topic labels, based on a cosine similarity 
+            score
     """
     terms_vector = normalize(nlp(topic_words).vector.reshape(300, 1), axis=0)
     prod = np.matmul(matrix, terms_vector)
-    a = np.argmax(prod)
-    return categories['categories'].iloc[a]
+    prod_with_index = [(i, elem) for (i, elem) in enumerate(prod)]
+    prod_sorted = sorted(prod_with_index, key=lambda tup: tup[1], reverse=True)
+    a = np.random.randint(low=0, high=5)
+    chosen_index = prod_sorted[a][0]
+    return categories['categories'].iloc[chosen_index]
 
 
 def get_topic_words(lda_model):
@@ -73,31 +72,94 @@ def get_topic_words(lda_model):
     return topics_words
 
 
-# %%
-# Section that loads a topic and generates the word list
-
-tqdm.pandas()
-categories = categories[categories.apply(lambda row:
-                drop_check(row['categories']), axis=1)]
-
-matrix = np.array([categories['doc2vec']]).reshape(-1, 300).astype('float32')
-
-topic_labels = {}
-with warnings.catch_warnings():
-    warnings.simplefilter("ignore")
-    for market_index in range(7):
-        topic_labels[market_index] = {}
-        filename = './ldamodels/market' + str(market_index) + '/model.model'
-        lda_model = gensim.models.ldamodel.LdaModel.load(filename)
-        all_topics_words = get_topic_words(lda_model)
-        for topic, words in all_topics_words:
-            words_string = ' '.join(words)
+def generate_topic_labels(lda_model):
+    """
+    Accepts an lda_model for a particular market and then returns the labels
+    for all of the topics for that particular market.
+    Accepts: lda_model for a particular market
+    returns: a dictionary of the format {topic_number: 'label}
+    """
+    all_topics_words = get_topic_words(lda_model)
+    topic_labels = {}
+    chosen_labels = []
+    for topic, words in all_topics_words:
+        words_string = ' '.join(words)
+        unique_flag = True
+        while unique_flag: # Make sure each topic has a unique label
             topic_label = get_minimum_distance_category(matrix, words_string)
-            topic_labels[market_index][topic] = topic_label
-            
-# %%
-# Prints topic labels and save to dictionary
+            topic_labels[topic] = topic_label
+            unique_flag = topic_label in chosen_labels
+            if unique_flag:
+                pass
+            chosen_labels += [topic_label]
+    return topic_labels
 
-pprint(topic_labels)
-with open('./data/topic_labels_dict.data', 'wb') as filehandle:
-    pickle.dump(topic_labels, filehandle, protocol=pickle.HIGHEST_PROTOCOL)
+
+def get_topic_labels_for_markets():
+    """
+    Generates all topic labels across all markets for across all topic groups.
+    """
+    topic_labels_markets = {}
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        for market_index in range(7):
+            topic_labels_markets[market_index] = {}
+            filename = './ldamodels/market' + str(market_index) + '/model.model'
+            lda_model = gensim.models.ldamodel.LdaModel.load(filename)
+            topic_labels_markets[market_index] = generate_topic_labels(lda_model)
+    return topic_labels_markets
+
+
+def main():
+    topics_dict = get_topic_labels_for_markets()
+    # pprint(topics_dict)
+    return topics_dict
+
+# %%
+
+if __name__ == '__main__':
+
+    # Load the file
+    # The twitter cateogry data was collected from:
+    # https://www.97thfloor.com/blog/twitter-interest-category-list
+
+    # Check out this list of events - maybe find category and then closest
+    # match to the best possible event.
+    # https://www.eventmanagerblog.com/event-ideas#community Also, try and scrape
+    # https://www.eventmanagerblog.com/event-ideas It looks like there are a lot of
+    # ideas that I can save as a dataframe to sample from. Even if it is just a 
+    # single idea.
+
+    categories = pd.read_csv('./data/new_categories_list.txt',
+                            error_bad_lines=False,
+                            warn_bad_lines=False)
+    categories.columns = ['categories']
+    categories['doc2vec'] = categories.apply(lambda row: 
+                                                get_docvec(row['categories']),
+                                                axis=1)
+
+    matrix = (np.array([categories['doc2vec']]).reshape(-1, 300)
+                        .astype('float32'))
+    topics_dict = main()
+    pprint(topics_dict)
+
+    with open('./data/topic_labels_dict.data', 'wb') as filehandle:
+        pickle.dump(topics_dict, filehandle, protocol=pickle.HIGHEST_PROTOCOL)
+
+    # %%
+    # I am also interested in finding out what kind of unique events keep showing
+    # up, so I am going to run this maybe a 100 times, find all the events across 
+    # the markets. Once I have a tagged list of topic labels, I can then select
+    # them and see which ones occur so that I have topic labels for them.
+    
+    # unique = set()
+    # for _ in tqdm(range(1000)):
+    #     topics_dict = main()
+        
+    #     for market_index in topics_dict.keys():
+    #         labels = topics_dict[market_index].values()
+    #         unique = unique.union(labels)
+    # print(unique)
+    # print('Number of unique topic labels: ', len(unique))
+
+# %%
