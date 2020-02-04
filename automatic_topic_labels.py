@@ -46,14 +46,14 @@ def get_minimum_distance_category(matrix, topic_words):
     """
     Input: The normalized doc2vec matrix for wikipedia categories, the words
            that constitute a topic.
-    Returns: one of the top five topic labels, based on a cosine similarity 
+    Returns: one of the top three topic labels, based on a cosine similarity 
             score
     """
     terms_vector = normalize(nlp(topic_words).vector.reshape(300, 1), axis=0)
     prod = np.matmul(matrix, terms_vector)
     prod_with_index = [(i, elem) for (i, elem) in enumerate(prod)]
     prod_sorted = sorted(prod_with_index, key=lambda tup: tup[1], reverse=True)
-    a = np.random.randint(low=0, high=5)
+    a = np.random.randint(low=0, high=3)
     chosen_index = prod_sorted[a][0]
     return categories['categories'].iloc[chosen_index]
 
@@ -153,7 +153,7 @@ if __name__ == '__main__':
     # them and see which ones occur so that I have topic labels for them.
     
     # unique = set()
-    # for _ in tqdm(range(1000)):
+    # for _ in tqdm(range(100)):
     #     topics_dict = main()
         
     #     for market_index in topics_dict.keys():
