@@ -53,7 +53,7 @@ def get_minimum_distance_category(matrix, topic_words):
     prod = np.matmul(matrix, terms_vector)
     prod_with_index = [(i, elem) for (i, elem) in enumerate(prod)]
     prod_sorted = sorted(prod_with_index, key=lambda tup: tup[1], reverse=True)
-    a = np.random.randint(low=0, high=3)
+    a = np.random.randint(low=0, high=1)
     chosen_index = prod_sorted[a][0]
     return categories['categories'].iloc[chosen_index]
 
@@ -85,13 +85,13 @@ def generate_topic_labels(lda_model):
     for topic, words in all_topics_words:
         words_string = ' '.join(words)
         unique_flag = True
-        while unique_flag: # Make sure each topic has a unique label
-            topic_label = get_minimum_distance_category(matrix, words_string)
-            topic_labels[topic] = topic_label
-            unique_flag = topic_label in chosen_labels
-            if unique_flag:
-                pass
-            chosen_labels += [topic_label]
+        # while unique_flag: # Make sure each topic has a unique label
+        topic_label = get_minimum_distance_category(matrix, words_string)
+        topic_labels[topic] = topic_label
+        unique_flag = topic_label in chosen_labels
+        if unique_flag:
+            pass
+        chosen_labels += [topic_label]
     return topic_labels
 
 

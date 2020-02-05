@@ -49,11 +49,44 @@ with open('./data/event_suggester_dict.data', 'rb') as filehandle:
     event_suggester_dict = pickle.load(filehandle)
 
 # %%
+# Sidebar content
+
+st.sidebar.title('Magnetic Markets')
+image = Image.open('./farmers-markets.jpg')
+st.sidebar.image(image, use_column_width=True)
+product_summary = """
+                  The number of visitors to and purchases made at farmers
+                  markets has been decreasing for the past several years.
+                  Organizing events at markets is a demonstrated way to increase
+                   market attendance and customer retention. Magnetic Markets 
+                  uses Twitter data to analyze topics discussed by people 
+                  interested in farmers markets. Market managers can use this 
+                  information to organize events at markets. This approach is
+                  data-driven, location-specific, and real-time. 
+                  """
+
+interaction_description = """First, select a city. Inspect the resulting topics of 
+                         discussion in the bubble plot. The size and color
+                         of the bubble for each topic represents the number of 
+                         followers for whom this was the most dominant topic of
+                         discussion. Hover on the bubbles to see the keywords
+                         that contitute a topic. Finally, choose one of the topics
+                         that the city is talking about to generate an event
+                         suggestion related to that topic!
+                         """
+
+# st.sidebar.markdown(product_summary)
+
+st.sidebar.markdown('## Interacting with this product')
+st.sidebar.markdown(interaction_description)
+
+
 # Headers, etc.
 st.title('Magnetic Market')
-st.markdown("""### Attracting customers to farmers markets with data-driven options for engaging events""")
-image = Image.open('./farmers-markets.jpg')
-st.image(image, use_column_width=True)
+tagline = 'Attracting customers to farmers markets with data-driven event ideas.'
+st.subheader(tagline)
+st.write(product_summary)
+
 
 
 # %%
@@ -71,8 +104,16 @@ with open(bokeh_dict_filename, 'rb') as filehandle:
 # Generate the Bokeh plot
 
 st.header('Topic Dominance plot')
-st.write("""In the plot below, this is an explanation of the plot and how to 
-         read it.""")
+st.write('The bubble plot below displays the different topics discussed in {}'.format(location))
+st.markdown("""The **dominance** of a topic in a document is characterized by 
+        the proportion of all words in the document that belong to that 
+        particular topic. For example, if half of all words in a document are 
+        in the bag of words corresponding to topic 1, the dominance of topic 1
+        is 0.5. The most dominant topic for a document is that topic which has
+        the highest dominance in the document. The size of the bubbles for each
+        topic below is proportional to the number of documents that had that
+        topic as being most dominant. Hover on the bubble to see a sample of 
+        keywords that constitute the topic.""")
 
 
 df = pd.DataFrame(data=bokeh_dict)
@@ -102,7 +143,7 @@ st.bokeh_chart(plot)
 
 location_topics = topic_labels_dict[market_index]
 st.header('Choose a specific topic that {} talks about!'.format(location))
-specific_topic_label = st.selectbox('', list(location_topics.values()))
+specific_topic_label = st.selectbox('', list(set(location_topics.values())))
 
 generated = generate_event_suggestion(specific_topic_label)
 event_name = generated[0][0]
