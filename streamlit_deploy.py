@@ -22,8 +22,11 @@ import matplotlib.colors as mcolors
 from pprint import pprint
 from PIL import Image
 
+import numpy as np
+
 # %%
 # Define functions
+
 
 def generate_event_suggestion(topic_label):
     """
@@ -34,6 +37,14 @@ def generate_event_suggestion(topic_label):
     """
     random_dict = random.choice(event_suggester_dict[topic_label])
     return(list(random_dict.items()))
+
+
+def insert_newline_char(words_list):
+    words_list_newline = []
+    for word in words_list:
+        words_list_newline.append(word)
+        words_list_newline.append('\n')
+    return words_list_newline
 
 
 # %%
@@ -100,6 +111,7 @@ bokeh_dict_filename = './data/bokeh_dict_' + str(market_index) + '.data'
 with open(bokeh_dict_filename, 'rb') as filehandle:
     bokeh_dict = pickle.load(filehandle)
 
+
 # %%
 # Generate the Bokeh plot
 
@@ -117,6 +129,9 @@ st.markdown("""The **dominance** of a topic in a document is characterized by
 
 
 df = pd.DataFrame(data=bokeh_dict)
+df['words'] = df['words'].apply(lambda l: ['\n' + s for s in l])
+
+# df['words'] = df['words'].apply(lambda l: np.array(l).reshape(15, 1))
 source = ColumnDataSource(df)
 plot = figure(x_range=df['topic'].unique(),
         y_range=df['subject'].unique(),
@@ -130,12 +145,29 @@ color_bar = ColorBar(color_mapper=color_mapper,
                     location=(0, 0),
                     ticker=BasicTicker())
 plot.add_layout(color_bar, 'right')
+plot.xaxis.major_label_text_font_size = "13pt"
 
 plot.scatter(x='topic', y='subject',
         size='counts_scaled',
         fill_color=transform('counts', color_mapper),
         source=source)
-plot.add_tools(HoverTool(tooltips=[('Words', '@words')]))
+
+TOOLTIPS = """
+<div style="width:100px;">
+<font size="+2">
+<strong>
+Words:
+</strong>
+</font>
+<br>
+<font size="+0.5">
+@words
+</font
+</div>
+"""
+# plot.add_tools(HoverTool(tooltips=[('Words', '@words')]))
+plot.add_tools(HoverTool(tooltips=TOOLTIPS))
+
 st.bokeh_chart(plot)
 
 # %%
