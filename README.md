@@ -1,19 +1,21 @@
 
 # Motivation
 
-Farmers markets serve a critical function in society. For every million dollars spent  They are good for the environment because the carbon footprint of the food sold is typically much smaller, meats and poulty are often raised in more humane ways, they offer healthier options for fresh fruits and groceries. They offer an opportunity for communities to gather and socialize. They also serve an important economic function and help support local communities and businesses. Perhaps most importantly, they can be particularly helpful to low income communities by offering them economic incentives to make healthier food choices, for example by [doubling the value of food stamps](https://www.wholesomewave.org/how-we-work/doubling-snap) for SNAP shoppers. 
+Farmers markets serve a critical function in society. Apart from stimulating local economies, they also offer several social benefits such as accepting SNAP coupons, offering healthier food options, and allowing for environmentally conscious food purchasing habits. Furthermore, they serve as community gathering spots and can bring people together who share a common interest and purpose.  
 
-Unfortunately, farmers markets are beginning to show a decrease in customer growth.This is primarily because the market is [beginning to saturate](https://www.npr.org/sections/thesalt/2019/03/17/700715793/why-are-so-many-farmers-markets-failing-because-the-market-is-saturated). People who previously wished to go to farmers markets but couldn't because of not living near one now have much easier to access to markets. In essence, customers who care deeply about the notion of a farmers market can now usually find ways to make it to one on a regular basis. [Combining farmers markets with events](https://www.usda.gov/media/blog/2016/08/08/building-businesses-helping-communities-celebrating-fruits-farmers-markets) has shown promise in increasing customer attendance and retention. However, most farmers markets make these decisions rather intuitively; things like music concerts, dances, and fairs are common events, but these do not align with the local desires of the community. In today's ever changing landscape, shoppers care about financial fitness, healthy living, dual careers, stress management, climate change and social action. These topics might vary from city-to-city, and might also be seasonal. Instead of historic data or *a-priori* guesses, organizing events at farmers markets based on data-driven insights would serve not only a helpful social function by assisting communities with their needs, but also increase business and encourage customer growth. 
+Unfortunately, farmers markets are beginning to show a decrease in customer growth. [Combining farmers markets with events](https://www.usda.gov/media/blog/2016/08/08/building-businesses-helping-communities-celebrating-fruits-farmers-markets) has shown promise in increasing customer attendance and retention. However, most farmers markets make these decisions rather intuitively; things like music concerts, dances, and fairs are common events, but these do not align with the local desires, needs, and wishes of the community. In today's ever changing landscape, shoppers care about financial fitness, healthy living, dual careers, stress management, climate change and social action. These topics might vary from city-to-city, and might also be seasonal. Instead of historic data or *a-priori* guesses, organizing events at farmers markets based on data-driven insights would serve not only a helpful social function by assisting communities with their needs, but also increase business and encourage customer growth. 
 
-In this project I scrape twitter data find the tweets 
+In this project I scrape twitter data to find these desires of the local communities served by the farmers markets. I apply a host of natural language processing techniques such a Latent Dirichlet Allocation, `word2vec` embeddings, binary classification with support vector machines, and a radial basis function kernel. 
+
+View the presentation [here](https://docs.google.com/presentation/d/1zIkJ2WxlK7GXpil40jjBi6bHxGFkWSCU9s6_7BIKPLg/edit?usp=sharing) for more details.
 
 # Implementation
 
 ## File structures
 
-In a later stage of this project, we will use this file structure to draw out a map of how best to refactor the code to align with established software design
-practices. It does seem like I am repeating a lot of functions which I can
-collapse into a `utils` file. How best should I handle this `utils` file? Essentially, I want to separate out the downloading of data and the processing of the data. Probably the best way to do this is through a `if name == __main__()` structure, and combining it with argparse. Do this after week 4. 
+### `utils.py`
+
+This file contains a lot of the boiler plate code that
 
 ### `user_list_generator.ipynb`
 
@@ -62,8 +64,6 @@ Now comes the major chunk of the downloading. For each market, and each selected
 }
 ```
 
-
-**TODO:** Perhaps I can hand select a set of commercial followers? Check out the `farmers_market_twitter_all.csv` file. I have a list of farmers markets with their handles. I could use this is select all them, download all their tweets, so a topic model, train a binary classifier (simple), test_train_split (will need to include some non-market account, say random accounts from the corresponding city). Then expand the selected_follower function to include this case. 
 
 ### `commercial-markets-downloader.py`
 
@@ -116,19 +116,51 @@ To do this, I define several helper functions to get the user name, to get the l
 
 I then use the function `get_docs(master_dict, market)` to return a list of the form `[[all-tweet-words-of-user-1], ..., [all-tweet-words-of-user-m1]]` given the market that I am interested in. 
 
-Finally, I train the LDA with a choice of hyperparameters (used the coherence score to keep track of how many topics I need), and then export the trained model to the appropriate folder. Note that if I want to use the `pyLDAvis` library later to generate visuals, I need to also export the corpus. 
+Finally, I train the LDA with a choice of hyperparameters (used the coherence score to keep track of how many topics I need), and then export the trained model to the appropriate folder under `./ldamodels/`. 
 
-### `LDAvis.ipynb`
+### `commercial-markets-downloader.py`
 
-This file is solely for importing the trained LDA models, generating the `pyLDAvis` visuals and then exporting these visuals as HTML files. I then use `streamlit` later to display these visuals in the browser. This is just a few lines of code in `streamlit.py`. 
+This file downloads thousands of tweets of several hundred farmers markets in the US.  I find this list by using [this dataset](https://catalog.data.gov/dataset/farmers-markets-geographic-data) of all farmers markets in the US along with their twitter handles. To limit the scope of this project, I only was interested in farmers markets that lie in urban geographic domains. For this, I used shapely and defined my own `is_urban` function that returns a Boolean. Finally, for urban market, I obtain tweets, clean, preprocess and output `market_tweets_dict` with market as keys and a list of `tweet._json` objects as the values. This file also generates a set of tweets of random users, which is then used later in the validation. 
 
-# Some application ideas
+### `market_follower_data_prepare.py`
 
-* Maybe I can use it to identify low income users. Or target it towards lower income users.
+This file helps me build a dictionary of human followers + businesses. This is then fed into a binary classifier to only pass humans into when I am doing the actual LDA. From `master_dict`, this file picks 500 followers at random, constructs a dictionary `dataset_tweets_markets_followers` of the form:
 
-* Free health screenings, yoga classes, outdoor cooking classes, lectures and
-talks on social issues such as climate change and sustainability. 
+```
+{
+    random_follower: {
+                        'tweets': [list of the fulltext of all tweets]
+                        'label': 0/1
+                     }
+}
+```
 
-* Shoppers are unable to do all their shopping - so maybe increase product space depending on what other products people want. 
+The labels are assigned to be 0 (not commercial) and 1 (yes commercial). 
 
-* Increased options for socialization
+### `market_follower_binary_classifer.py`
+
+This file loads `dataset_tweets_markets_followers` and then fits an lda model, makes inferences on each individual document and constructs probability feature vectors. I also tack on the label field from before, so now I have a set of feature vectors and labels that I pass through a SVM binary classifier with an RBF kernel. I also hold out some data to do the validation and I achieve a 90% model accuracy. I then save and export this classifier. I use this file to filter out who gets to accepted into my 'list of humans'
+
+### `web_scraping_events.py`
+
+This file used `BeautifulSoup` to web scrape a list of common community events so that I feed this into my event recommendation part of the code. 
+
+### `automatic_topic_labels.py`
+
+This file takes in the list of twitter categories, finds the `word2vec` vectors. It then compares these vectors with the mean `word2vec` vectors for the list of words that constitute each of the topics for each of the cities. 
+
+### `event_suggester_dict_calculator.py`
+
+This file outputs a dictionary of event title and event description for each for each market and then for each of the topics within that market.
+
+### `follower-random-feature-vector-prediction`
+
+This file calculates feature vectors matrices for the set of followers and the set of random users on twitter (who are likely to not talk anything about related to farmers markets)
+
+### `generate_bokeh_dict.py`
+
+This file outputs a dictionary with keys `topic`, `subject`, `counts`, `counts_scaled`, `words`. This is then pulled in by the streamlit code to generate the bokeh plots. 
+
+### `streamlit_deploy`
+
+This file runs the streamlit app. It draws all the appropriate dictionaries and files and then constructs the bokeh file and other outputs necessary for the rest of the display. 
