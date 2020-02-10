@@ -7,7 +7,7 @@ Unfortunately, farmers markets are beginning to show a decrease in customer grow
 
 In this project I scrape twitter data to find these desires of the local communities served by the farmers markets. I apply a host of natural language processing techniques such a Latent Dirichlet Allocation, `word2vec` embeddings, binary classification with support vector machines, and a radial basis function kernel. 
 
-View the presentation [here](https://docs.google.com/presentation/d/1zIkJ2WxlK7GXpil40jjBi6bHxGFkWSCU9s6_7BIKPLg/edit?usp=sharing) for more details. View a demo of the project [here](bit.ly/magneticmarket)
+View the presentation [here](https://docs.google.com/presentation/d/1zIkJ2WxlK7GXpil40jjBi6bHxGFkWSCU9s6_7BIKPLg/edit?usp=sharing) for more details. View a demo of the project [here](http://bit.ly/magneticmarket)
 
 # Implementation
 
